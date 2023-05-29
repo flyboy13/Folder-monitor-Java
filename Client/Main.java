@@ -1,3 +1,5 @@
+import instance.HandleChange;
+
 import java.io.File;
 
 import javax.swing.*;
@@ -5,106 +7,106 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.awt.event.WindowAdapter;
-import java.awt.event.WindowEvent;
 
-import connection.HandleChange;
 import connection.ServerConnection;
-import connection.WatchDirectory;
 
 public class Main extends JFrame {
-    private Thread watchThread;
-    private Thread handleThread;
+    public static JPanel inputPanel;
 
-    public void initUI() {
-        setTitle("Client");
-        setPreferredSize(new Dimension(720, 480));
-        setVisible(true);
-        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        JTextField server = new JTextField();
-        server.setText("localhost");
-        server.setPreferredSize(new Dimension(200, 30));
-
-        JTextField folder = new JTextField();
-        folder.setPreferredSize(new Dimension(200, 30));
-        JPanel panel = new JPanel();
-        panel = new JPanel(new GridBagLayout());
-
-        addWindowListener(new WindowAdapter() {
-            @Override
-            public void windowClosing(WindowEvent e) {
-                // Loop through all the threads and interrupt them
-                watchThread.stop();
-
-                System.out.println("Thread closed");
-                // Call the super method to close the window
-                super.windowClosing(e);
-            }
-        });
-
-        GridBagConstraints constraints = new GridBagConstraints();
-        constraints.weightx = 0;
-        constraints.weighty = 0.5;
-
-        constraints.gridx = 0;
-        constraints.gridy = 0;
-        panel.add(new JLabel("SERVER IP: "), constraints);
-
-        constraints.gridx = 1;
-        constraints.gridy = 0;
-        panel.add(server, constraints);
-
-        constraints.gridx = 0;
-        constraints.gridy = 1;
-        panel.add(new JLabel("FOLDER PATH: "), constraints);
-
-        constraints.gridx = 1;
-        constraints.gridy = 1;
-        panel.add(folder, constraints);
-
-        constraints.gridx = 1;
-        constraints.gridy = 2;
-        JButton submitAddButton = new JButton("CONNECT");
-
-        panel.add(submitAddButton, constraints);
-
-        submitAddButton.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                ServerConnection.initConnect(server.getText(), 5000);
-                String path = folder.getText();
-                // Create a new thread to run the loop that monitors for changes
-                watchThread = new Thread(new Runnable() {
-                    @Override
-                    public void run() {
-                        
-                        try {
-                            WatchDirectory watch = new WatchDirectory();
-                            watch.Running(path);
-                        } catch (Exception ex) {
-                            ex.printStackTrace();
-                        }
-                    }
-                });
-
-                // Start the thread to run the loop
-                watchThread.start();
-            }
-        });
-
-        constraints.gridx = 2;
-        constraints.gridy = 5;
-        constraints.gridwidth = 2;
-        constraints.gridheight = 2;
-
-        getContentPane().add(panel);
-        pack();
-        setLocationRelativeTo(null);
+    public Main() {
     }
 
     public static void main(String[] args) {
-        Main main = new Main();
-        main.initUI();
+        Main ui = new Main();
+        ui.initUI();
         // ------------------
+    }
+
+    void initUI() {
+        this.setTitle("Tracker Folder Client");
+        this.setPreferredSize(new Dimension(1080, 720));
+        this.setResizable(false);
+        this.setVisible(true);
+        this.setDefaultCloseOperation(JFrame.HIDE_ON_CLOSE);
+        JTextField ipServerInput = new JTextField();
+        ipServerInput.setPreferredSize(new Dimension(200, 50));
+        JTextField portServerInput = new JTextField();
+        portServerInput.setPreferredSize(new Dimension(200, 50));
+        JTextField folderInput = new JTextField();
+        folderInput.setPreferredSize(new Dimension(200, 50));
+        inputPanel = new JPanel(new GridBagLayout());
+
+        GridBagConstraints gbc_label = new GridBagConstraints();
+        gbc_label.gridwidth = 1;
+        GridBagConstraints gbc_field = new GridBagConstraints();
+        gbc_field.gridwidth = 2;
+
+        gbc_label.gridx = 0;
+        gbc_label.gridy = 0;
+        gbc_field.gridx = 1;
+        gbc_field.gridy = 0;
+        gbc_field.insets = gbc_label.insets = new Insets(10, 10, 10, 10);
+
+        inputPanel.add(new JLabel("SERVER IP: "), gbc_label);
+        inputPanel.add(ipServerInput, gbc_field);
+
+        gbc_label.gridy = 1;
+        gbc_field.gridy = 1;
+
+        inputPanel.add(new JLabel("SERVER PORT: "), gbc_label);
+        inputPanel.add(portServerInput, gbc_field);
+
+        gbc_label.gridy = 2;
+        gbc_field.gridy = 2;
+
+        inputPanel.add(new JLabel("FOLDER PATH  : "), gbc_label);
+        inputPanel.add(folderInput, gbc_field);
+
+        JButton submitAddButton = new JButton("CONNECT");
+        submitAddButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                ServerConnection.initConnect(ipServerInput.getText(), Integer.parseInt(portServerInput.getText()));
+                Main.inputPanel.removeAll();
+                Main.inputPanel.setLayout(new BorderLayout());
+                Main.inputPanel.add(new JLabel("Connection successfuly! Your folder is tracking by server"),
+                        BorderLayout.CENTER);
+                String path = folderInput.getText();
+                File root = new File(path);
+                File list[] = root.listFiles();
+                long modified[] = new long[list.length];
+                for (int i = 0; i < list.length; i++)
+                    modified[i] = list[i].lastModified();
+                File list1[];
+                try {
+                    while (true) {
+                        File root1 = new File(path);
+                        list1 = root1.listFiles();
+                        for (int i = 0; i < list1.length; i++)
+                            if ((list.length != list1.length) || (list1[i].compareTo(list[i]) != 0)
+                                    || (modified[i] != list1[i].lastModified())) {
+                                HandleChange handle = new HandleChange(list, list1, modified);
+                                Thread handleThread = new Thread(handle);
+                                handleThread.start();
+                                list = list1;
+                                modified = new long[list1.length];
+                                for (int j = 0; j < list.length; j++)
+                                    modified[j] = list1[j].lastModified();
+                            }
+                    }
+
+                } catch (Exception ex) {
+                    ex.printStackTrace();
+                }
+            }
+        });
+        gbc_label.gridx = 2;
+        gbc_label.gridy = 5;
+        gbc_label.gridwidth = 2;
+        gbc_label.gridheight = 2;
+        inputPanel.add(submitAddButton, gbc_label);
+        this.getContentPane().add(inputPanel);
+        this.pack();
+        this.setLocationRelativeTo(null);
     }
 }

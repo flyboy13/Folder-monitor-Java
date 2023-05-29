@@ -1,7 +1,9 @@
-package connection;
+package instance;
 
 import java.io.DataOutputStream;
 import java.io.File;
+
+import connection.ServerConnection;
 
 public class HandleChange implements Runnable {
     File preList[], list[];
@@ -22,13 +24,13 @@ public class HandleChange implements Runnable {
 
     @Override
     public void run() {
-        DataOutputStream send = ServerConnection.outStream;
+        DataOutputStream out = ServerConnection.outStream;
         try {
             if (preList.length > list.length)
                 for (int i = 0; i < preList.length; i++)
                     if (!checkExist(preList[i], list)) {
                         System.out.println("File da bi xoa: " + preList[i].getName());
-                        send.writeUTF("File da bi xoa: " + preList[i].getName());
+                        out.writeUTF("File da bi xoa: " + preList[i].getName());
                         return;
                     }
             // --------------------
@@ -36,14 +38,14 @@ public class HandleChange implements Runnable {
                 for (int i = 0; i < list.length; i++)
                     if (!checkExist(list[i], preList)) {
                         System.out.println("File vua them: " + list[i].getName());
-                        send.writeUTF("File vua them: " + list[i].getName());
+                        out.writeUTF("File vua them: " + list[i].getName());
                         return;
                     }
             // -----------------
             for (int i = 0; i < list.length; i++) {
                 if ((list[i].compareTo(preList[i]) == 0) && (list[i].lastModified() != modified[i])) {
                     System.out.println("File bi chinh sua noi dung: " + preList[i].getName());
-                    send.writeUTF("File bi chinh sua noi dung: " + preList[i].getName());
+                    out.writeUTF("File bi chinh sua noi dung: " + preList[i].getName());
                     return;
                 }
                 if (!checkExist(preList[i], list)) {
@@ -51,7 +53,7 @@ public class HandleChange implements Runnable {
                         if (!checkExist(list[j], preList)) {
                             System.out.println(
                                     "File da bi doi ten: " + preList[i].getName() + " -------- " + list[j].getName());
-                            send.writeUTF(
+                            out.writeUTF(
                                     "File da bi doi ten: " + preList[i].getName() + " -------- " + list[j].getName());
                             return;
                         }

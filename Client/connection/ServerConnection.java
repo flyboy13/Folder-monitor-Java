@@ -14,7 +14,6 @@ public class ServerConnection {
             socket = new Socket(address, port);
             outStream = new DataOutputStream(socket.getOutputStream());
             inputStream = new DataInputStream(socket.getInputStream());
-            System.out.println("Connected!");
         } catch (Exception e) {
             System.out.println("Error in while initialize connection");
         }
